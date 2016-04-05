@@ -46,8 +46,29 @@ pred.em <- predict(rf, data.em)
 alldata[c(62,830),]$Embarked <- factor("C")
 rm(data)
 
+#use a random forest to estimate the ages of the NAs
 
+data <- select(alldata, -c(Ticket, Cabin, Name, Survived))
+data.train.age <- data[!is.na(data$Age),]
+data.age <- data[is.na(data$Age),]
 
+rf <- randomForest(factor(Age)~., data.train.age, ntree=500, nodesize=2, importance=TRUE)
+pred <- predict(rf, data.train.age)
+
+table(pred, data.train.age$Age)
+
+pred.age <- predict(rf, data.age)
+
+alldata[is.na(alldata$Age),]$Age <- pred.age
+rm(data)
+
+#clean up the Ticket vairable of letters and spaces
+
+alldata$Ticket <- gsub("[a-zA-z]|[.]|[,]|[\\/]|[\\ ]", "", alldata$Ticket)
+
+#remove Cabin variable since it is way more than half empty
+
+alldata <- select(alldata, -Cabin)
 
 #create fam_size variable
 
@@ -61,19 +82,65 @@ alldata$Title <- gsub("(.*,.)|(\\..*)", "", alldata$Name)
 
 alldata$fam_name <- gsub(",.*", "", alldata$Name)
 
-#create single parent variables
+alldata$nuclear <- 0
+alldata$married <- 0
+alldata$nochild <- 0
+alldata$numchild <- 0
+alldata$single <- 0
+alldata$singmom <- 0
+alldata$singdad <- 0
+alldata$child1 <- 0
+alldata$child2 <- 0
+alldata$child3 <- 0
+alldata$child4 <- 0
+alldata$child5 <- 0
+alldata$child6 <- 0
+alldata$child7 <- 0
+alldata$child8 <- 0
+alldata$child9 <- 0
 
-for (i in nrow(alldata)) {
+
+for (i in unique(alldata$fam_name)) {
+    family <- alldata[alldata$fam_name == i,]
     
+    if (all(family$Parch ==0 ) & all(family$SibSp == 0)) { 
+        family$nochild <- 1
+        family$single <- 1
+    }
+    
+    if (all(family$Parch ==0 ) & all(family$SibSp == 1)) { 
+        family$nochild <- 1
+        family$married <- 1
+    }
+    
+    
+    for (j in 1:nrow(family)){
+        if (family[j,]$SibSp == 0 & family[j,]$Parch > 0)
+        
+        
+        if (with(family, fam_size[j] == Parch[j] + SibSp[j] + 1)){
+        family[j,]$nuclear <- 1
+            if (family[j,]$SibSp + 1 == family[family[j,]$SibSp==1,]$Parch) {
+                
+            }
+        } else { 
+        family[j,]$nuclear <- 0
+        family[j,]$fam_name <- paste0(family[j,]$fam_name, "I")
+    }
+        if (nrow(family) == family[j,]$fam_size & nrow(family[family[j,]$SibSp==1,])==2) {
+            if (family[j,]$SibSp==1 & family[l,]$Age > 18) { family[j,]$married <- 1 }
+
+        }
+    }
 }
+    
 
 
 
 
 
-#remove variables
 
-data <- select(alldata, -c(Name, Cabin, PassengerId, Ticket))
+
 
 
 #create predicitons for age NAs
