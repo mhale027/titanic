@@ -55,7 +55,7 @@ data.age <- data[is.na(data$Age),]
 rf <- randomForest(factor(Age)~., data.train.age, ntree=500, nodesize=2, importance=TRUE)
 pred <- predict(rf, data.train.age)
 
-table(pred, data.train.age$Age)
+# table(pred, data.train.age$Age)
 
 pred.age <- predict(rf, data.age)
 
@@ -87,6 +87,7 @@ alldata$married <- 0
 alldata$nochild <- 0
 alldata$numchild <- 0
 alldata$single <- 0
+alldata$parent <- 0
 alldata$singmom <- 0
 alldata$singdad <- 0
 alldata$child1 <- 0
@@ -99,11 +100,18 @@ alldata$child7 <- 0
 alldata$child8 <- 0
 alldata$child9 <- 0
 
-alldata[alldata$SibSp == 0,]$single <- 1
+alldata[alldata$SibSp == 0 & alldata$Age > 18,]$single <- 1
+alldata[alldata$single == 1 & alldata$Parch == 0,]$fam_name <- paste0(alldata[alldata$single == 1,]$fam_name, "(I)")
 alldata[alldata$Parch == 0,]$nochild <- 1
 alldata[alldata$Parch > 0 & alldata$SibSp == 0 & alldata$Sex == "male" & alldata$Age > 20,]$singdad <- 1
 alldata[alldata$Parch > 0 & alldata$SibSp == 0 & alldata$Sex == "female" & alldata$Age > 20,]$singmom <- 1
-alldata[alldata$Parch == 0 & alldata$SibSp == 1,]$married <- 1
+alldata[alldata$Parch == 0 & alldata$SibSp == 1 & alldata$Age > 18,]$married <- 1
+
+
+
+
+
+
 
 #split families
 
@@ -113,70 +121,52 @@ for (i in unique(alldata$fam_name)) {
     fam.size <- nrow(family) 
     for (j in 1:fam.size) {
         
-        if (nrow(family) == fam.size) {
-            if (family[max(family$Age),]$single == 1) {
-                family[j,]$numchild <- fam.size - 1
-                children <- family[family$Parch == 1 & family$SibSp == fam.size - 1,]
-                for (k in 1:nrow(children)) {
-                    child.num <- k + 21
-                    family[k,child.num] <- 1
-                }
-            }
-                
+        if (nrow(family) != fam.size) {
+            
         }
         
-    }
+        
+        
+        
+        
+        
+        
+        
+        if (nrow(family) == fam.size) {
+            
+            if (family[family$Age == max(family$Age),]$single == 1) { 
+                family$numchild <- fam.size - 1
+                parents <- arrange(family, desc(Age))[1,]
+                family[family$PassengerId == parents$PassengerId,]$parent <- 1
+            } else { 
+                family$numchild <- fam.size - 2 
+                parents <- arrange(family, desc(Age))[1:2,]
+               family[family$PassengerId == parents$PassengerId,]$parent <- 1
+           }
+            
+        children <- arrange(family[family$parent == 0 & family$Age < family$Age,], desc(Age))
+            
+            
+        for (k in 1:nrow(children)) {
+                child.num <- k + 21
+                family[k,child.num] <- 1
+            }
+        }    
+            
+            
+#        if (family[family$Age == max(family$Age),]$single == 1) { family[j,]$numchild <- nrow(family$fam_size) - 1 }
+            
+#        if (family[family$Age == max(family$Age),]$single == 0) { family[j,]$numchild <- nrow(family$fam_size) - 2 }
+         
+        alldata[alldata$PassengerId == family[j,]$PassengerId,] <- family[j,]
+        
+               
+        
+        
+     
+        
+    }       
+}
     
     
     
-    
-    
-    
-    
-    
-}    
-    
-##    for (j in 1:nrow(family)){
- #       if (family[j,]$SibSp == 0 & family[j,]$Parch > 0)
-#        
-#        
-#        if (with(family, fam_size[j] == Parch[j] + SibSp[j] + 1)){
-#        family[j,]$nuclear <- 1
-#            if (family[j,]$SibSp + 1 == family[family[j,]$SibSp==1,]$Parch) {
-#                
-#            }
-#        } else { 
-#        family[j,]$nuclear <- 0
-#        family[j,]$fam_name <- paste0(family[j,]$fam_name, "I")
-#    }
-#        if (nrow(family) == family[j,]$fam_size & nrow(family[family[j,]$SibSp==1,])==2) {
-#            if (family[j,]$SibSp==1 & family[l,]$Age > 18) { family[j,]$married <- 1 }
-#
-#        }
-#    }
-#}
-    
-
-
-
-
-
-
-
-
-
-#create predicitons for age NAs
-
-
-
-
-
-
-#
-#create new columns for siblings, son&daughter:1st:9th, parent, single mom, single dad, grandmother, grandfather
-#
-#
-#
-#
-
-
