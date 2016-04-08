@@ -106,9 +106,10 @@ alldata[alldata$Parch > 0 & alldata$SibSp == 0 & alldata$Sex == "female" & allda
 alldata[alldata$singdad == 1 | alldata$singmom == 1,]$parent <- 1
 alldata[alldata$Parch == 0 & alldata$SibSp == 1 & alldata$Age > 18,]$married <- 1
 
+#save alldata
+saved <- alldata
 
-
-
+alldata <- select(alldata, -Survived)
 
 
 
@@ -120,17 +121,19 @@ for (i in unique(alldata$fam_name)) {
     fam.size <- nrow(family)
     if (family$singmom[1] == 1 | family$singdad[1] == 1 & family$Parch[1] > 0){
         parents <- family[family$Age == max(family$Age) & family$Parch + family$SibSp + 1 == family$fam_size,]
-        
+        print(parents)
         
         family[family$PassengerId == parents$PassengerId,]$numchild <- fam.size - 1
         family[family$PassengerId == parents$PassengerId,]$parent <- 1
         
-        children <- arrange(family[family$parent == 0 & family$Age < family$Age,], desc(Age))
+        children <- arrange(family[family$parent == 0 & family$Age < max(family$Age),], desc(Age))
         
         
         for (k in 1:nrow(children)) {
-            child.num <- k + 21
-            family[k,child.num] <- 1
+            child.num <- k + 22
+            child <- children[k,]
+            print(apply(child, 2, function(x){sum(is.na(x))}))
+            family[family$PassengerId == child$PassengerId,child.num] <- 1
         }
     }
 
@@ -140,12 +143,12 @@ for (i in unique(alldata$fam_name)) {
         family[family$PassengerId == parents$PassengerId,]$numchild <- fam.size - 2
         family[family$PassengerId == parents$PassengerId,]$parent <- 1
     
-        children <- arrange(family[family$parent == 0 & family$Age < family$Age,], desc(Age))
+        children <- arrange(family[family$parent == 0 & family$Age < max(family$Age),], desc(Age))
             
             
         for (k in 1:nrow(children)) {
             child.num <- k + 21
-            family[k,child.num] <- 1
+            family[family$PassengerId == child$PassengerId,child.num] <- 1
         }    
             
             
