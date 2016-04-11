@@ -7,6 +7,7 @@ library(dplyr)
 library(rpart)
 library(caret)
 library(e1071)
+library(modeest)
 
 train <- read.csv("train.csv", na.strings=c(""," ", "NA (NULL)", "NA", "<NA>"))
 test <- read.csv("test.csv", na.strings=c(""," ", "NA (NULL)", "NA", "<NA>"))
@@ -98,99 +99,74 @@ alldata$child7 <- 0
 alldata$child8 <- 0
 alldata$child9 <- 0
 
-alldata[alldata$SibSp == 0 & alldata$Age > 18,]$single <- 1
+alldata[alldata$SibSp == 0 & alldata$Age > 18 & alldata$fam_size == 1,]$single <- 1
 alldata[alldata$single == 1 & alldata$Parch == 0,]$fam_name <- paste0(alldata[alldata$single == 1 & alldata$Parch == 0,]$fam_name, "(I)")
 alldata[alldata$Parch == 0,]$nochild <- 1
-alldata[alldata$Parch > 0 & alldata$SibSp == 0 & alldata$Sex == "male" & alldata$Age > 20,]$singdad <- 1
-alldata[alldata$Parch > 0 & alldata$SibSp == 0 & alldata$Sex == "female" & alldata$Age > 20,]$singmom <- 1
+alldata[alldata$Parch > 0 & alldata$SibSp == 0 & alldata$Sex == "male" & alldata$Age > 18,]$singdad <- 1
+alldata[alldata$Parch > 0 & alldata$SibSp == 0 & alldata$Sex == "female" & alldata$Age > 18,]$singmom <- 1
 alldata[alldata$singdad == 1 | alldata$singmom == 1,]$parent <- 1
-alldata[alldata$Parch == 0 & alldata$SibSp == 1 & alldata$Age > 18,]$married <- 1
+alldata[alldata$Title == "Mrs" & alldata$Age > 14,]$married <- 1
 
 #save alldata
-saved <- alldata
+survived <- alldata$Survived
 
 alldata <- select(alldata, -Survived)
+fam.names <- alldata[alldata$fam_size > 1,]$fam_name
 
 
+family <- arrange(alldata[alldata$fam_name == i,], desc(Age))
 
 #split families
 
 for (i in unique(alldata$fam_name)) {
 
     family <- arrange(alldata[alldata$fam_name == i,], desc(Age))
-    fam.size <- nrow(family)
-    if (family$singmom[1] == 1 | family$singdad[1] == 1 & family$Parch[1] > 0){
-        parents <- family[family$Age == max(family$Age) & family$Parch + family$SibSp + 1 == family$fam_size,]
-        print(parents)
+    
+    
+    
+    if (all(family$fam_size == ncol(family))) {
         
-        family[family$PassengerId == parents$PassengerId,]$numchild <- fam.size - 1
-        family[family$PassengerId == parents$PassengerId,]$parent <- 1
+        break
         
-        children <- arrange(family[family$parent == 0 & family$Age < max(family$Age),], desc(Age))
+    } else {
+        ticket <- mlv(as.numeric(family$Ticket))[[1]]
+        fam.size <- mlv(as.numeric(family$fam_size))[[1]]
         
         
-        for (k in 1:nrow(children)) {
-            child.num <- k + 22
-            child <- children[k,]
-            print(apply(child, 2, function(x){sum(is.na(x))}))
-            family[family$PassengerId == child$PassengerId,child.num] <- 1
+        family1 <- family[family$fam_size == fam.size & family$Ticket == ticket ,]
+        rename <- paste0(family1$fam_name[1], "()")
+        family1$fam_name <- rename
+       
+            for (j in 1:nrow(family1)) {
+                id <- family1[j,]$PassengerId
+                family[family$PassengerId == id,] <- family1[j,]
+            }
+        
+        
+        family2 <- family[!(family$fam_size == fam.size & family$Ticket == ticket) ,]
+        iter <- 0
+        
+        while (ncol(family2) > 0) {
+            iter <- iter + 1
+            fam.size3 <- mlv(as.numeric(family2$fam_size))[[1]]
+            fam <- paste0(family2$fam_name[1], "(", rep("I", iter, collapse=""), ")")
+            family3 <- family[family2$fam_size == fam.size3 & family$Ticket == ticket ,]
+            family3$fam_name <- fam
+            
+            for (k in 1:nrow(family3)) {
+                id <- family3[k,]$PassengerId
+                alldata[alldata$PassengerId == id,] <- family3[k,]
+            }
+            family2 <- NULL
+            rename <- paste0(family2$fam_name[1], "(I)")
+            family2$fam_name <- rename
+            family2 <- family[!(family$fam_size == fam.size3 & family$Ticket == ticket) ,]
+            
         }
     }
-
     
-    if (family$married[1] == 1 & family$Parch[1] > 0) {
-        parents <- family[1:2,]
-        family[family$PassengerId == parents$PassengerId,]$numchild <- fam.size - 2
-        family[family$PassengerId == parents$PassengerId,]$parent <- 1
-    
-        children <- arrange(family[family$parent == 0 & family$Age < max(family$Age),], desc(Age))
-            
-            
-        for (k in 1:nrow(children)) {
-            child.num <- k + 21
-            family[family$PassengerId == child$PassengerId,child.num] <- 1
-        }    
-            
-            
+    for (z in 1:nrow(family)) {
+        id <- family[z,]$PassengerId
+        alldata[alldata$PassengerId == id,] <- family[z,]
     }
-        
-    
-    
-    
-    for (j in 1:nrow(family)) {
-            id <- family[j,]$PassengerId
-            alldata[alldata$PassengerId == id,] <- family[family$PassengerId == id,]
-#            if (family[family$Age == max(family$Age),]$single == 1) { 
-#                family$numchild <- nrow(family) - 1
-#                parents <- arrange(family, desc(Age))[1,]
-#                family[family$PassengerId == parents$PassengerId,]$parent <- 1
-#            } 
-#            
-#            if (family[family$Age == max(family$Age),]$single == 0) {
-#                family$numchild <- nrow(family) - 2 
-#                parents <- arrange(family, desc(Age))[1:2,]
-#               family[family$PassengerId == parents$PassengerId,]$parent <- 1
-#            }
-            
-#            children <- arrange(family[family$parent == 0 & family$Age < family$Age,], desc(Age))
-            
-            
-#            for (k in 1:nrow(children)) {
-#                child.num <- k + 21
-#                family[k,child.num] <- 1
-#            }
-            
-            
-            
-#        if (family[family$Age == max(family$Age),]$single == 1) { family[j,]$numchild <- nrow(family$fam_size) - 1 }
-            
-#        if (family[family$Age == max(family$Age),]$single == 0) { family[j,]$numchild <- nrow(family$fam_size) - 2 }
-         
-        
-        
-               
-        }
-        
-     
-        
 }
