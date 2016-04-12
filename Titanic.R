@@ -14,11 +14,11 @@ test <- read.csv("test.csv", na.strings=c(""," ", "NA (NULL)", "NA", "<NA>"))
 
 
 
-str(train)
-str(test)
+#str(train)
+#str(test)
 
-apply(train, 2, function(x){sum(is.na(x))})
-apply(test, 2, function(x){sum(is.na(x))})
+#apply(train, 2, function(x){sum(is.na(x))})
+#apply(test, 2, function(x){sum(is.na(x))})
 
 #create whole dataset and reset factor variables
 
@@ -40,7 +40,7 @@ data.em <- data[c(62,830),]
 rf <- randomForest(factor(Embarked)~., data.train.em, ntree=500, nodesize=2, importance=TRUE)
 pred <- predict(rf, data.train.em)
 
-table(pred, data.train.em$Embarked)
+#table(pred, data.train.em$Embarked)
 
 pred.em <- predict(rf, data.em)
 
@@ -111,10 +111,8 @@ alldata[alldata$Title == "Mrs" & alldata$Age > 14,]$married <- 1
 survived <- alldata$Survived
 
 alldata <- select(alldata, -Survived)
-fam.names <- alldata[alldata$fam_size > 1,]$fam_name
 
 
-family <- arrange(alldata[alldata$fam_name == i,], desc(Age))
 
 #split families
 
@@ -124,16 +122,24 @@ for (i in unique(alldata$fam_name)) {
     
     
     
-    if (all(family$fam_size == ncol(family))) {
+    if (all(family$fam_size == nrow(family))) {
         
-        break
+        print(family)
+        next
+        
+    } else if (all(family$single == 1)) {    
+        print(family)
+        next
+        
         
     } else {
-        ticket <- mlv(as.numeric(family$Ticket))[[1]]
-        fam.size <- mlv(as.numeric(family$fam_size))[[1]]
+        ticket1 <- mlv(as.numeric(family$Ticket))[[1]]
+            if (ticket1 %% 1 > 0) {ticket1 <- family[1,]$Ticket}
+        fam.size1 <- mlv(as.numeric(family$fam_size))[[1]]
         
         
-        family1 <- family[family$fam_size == fam.size & family$Ticket == ticket ,]
+#        family1 <- family[family$fam_size == fam.size1 & family$Ticket == ticket1 ,]
+        family1 <- family[family$Ticket == ticket1 ,]
         rename <- paste0(family1$fam_name[1], "()")
         family1$fam_name <- rename
        
@@ -142,25 +148,27 @@ for (i in unique(alldata$fam_name)) {
                 family[family$PassengerId == id,] <- family1[j,]
             }
         
-        
-        family2 <- family[!(family$fam_size == fam.size & family$Ticket == ticket) ,]
+    
+        family2 <- family[!(family$Ticket == ticket1) ,]         
         iter <- 0
         
         while (ncol(family2) > 0) {
             iter <- iter + 1
             fam.size3 <- mlv(as.numeric(family2$fam_size))[[1]]
-            fam <- paste0(family2$fam_name[1], "(", rep("I", iter, collapse=""), ")")
-            family3 <- family[family2$fam_size == fam.size3 & family$Ticket == ticket ,]
+            ticket3 <- mlv(as.numeric(family$Ticket))[[1]]
+            if (ticket3 %% 1 > 0) {ticket3 <- family2[1,]$Ticket}
+            
+            fam <- paste0(family2$fam_name[1], "(", rep("i", iter, collapse=""), ")")
+            family3 <- family2[ family2$Ticket == ticket3 ,]
             family3$fam_name <- fam
             
             for (k in 1:nrow(family3)) {
-                id <- family3[k,]$PassengerId
-                alldata[alldata$PassengerId == id,] <- family3[k,]
+                id3 <- NULL
+                id3[k] <- family3[k,]$PassengerId
+                family[family$PassengerId == id3[k],] <- family3[k,]
             }
-            family2 <- NULL
-            rename <- paste0(family2$fam_name[1], "(I)")
-            family2$fam_name <- rename
-            family2 <- family[!(family$fam_size == fam.size3 & family$Ticket == ticket) ,]
+            family2 <- family3[!(family3$PassengerId %in% id3), ]
+            
             
         }
     }
