@@ -119,10 +119,19 @@ alldata <- select(alldata, -Survived)
 for (i in unique(alldata$fam_name)) {
 
     family <- arrange(alldata[alldata$fam_name == i,], desc(Age))
-    
+    singles <- family[grep("(I)", family$fam_name, fixed=TRUE),]
+#    family <- family[-grep("(I)", family$fam_name, fixed=TRUE),]
+    if (nrow(singles) > 0) {   
+        for (sing in 1:nrow(singles)) {
+            fam <- paste0(family$fam_name[1], "(", rep("I", sing, collapse=""), ")")
+            singles[sing,]$fam_name <- gsub("(I)", fam, singles[sing,]$fam_name, fixed=TRUE)
+            family[sing,] <- singles[sing,]
+        }
+    }
     
     
     if (all(family$fam_size == nrow(family))) { next } 
+    else if (nrow(family) == 0) { next }
     else if (all(family$single == 1)) { next } 
     else if (all(family$fam_size == 1)) { next } 
     else if (nrow(family) == 1) { next } 
@@ -155,3 +164,4 @@ for (i in unique(alldata$fam_name)) {
         alldata[alldata$PassengerId == id,] <- family[z,]
     }
 }
+
