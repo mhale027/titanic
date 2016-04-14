@@ -123,7 +123,7 @@ for (i in unique(alldata$fam_name)) {
 #    family <- family[-grep("(I)", family$fam_name, fixed=TRUE),]
     if (nrow(singles) > 0) {   
         for (sing in 1:nrow(singles)) {
-            fam <- paste0(family$fam_name[1], "(", rep("I", sing, collapse=""), ")")
+            fam <- paste0(family$fam_name[1], "(", paste0(replicate(n = sing, "I"), collapse=""), ")", collapse = "")
             singles[sing,]$fam_name <- gsub("(I)", fam, singles[sing,]$fam_name, fixed=TRUE)
             family[sing,] <- singles[sing,]
         }
@@ -144,21 +144,36 @@ for (i in unique(alldata$fam_name)) {
         family1 <- family[family$Ticket == ticket1 ,]
         rename <- paste0(family1$fam_name[1], "()")
         family1$fam_name <- rename
-       
+        family1$nuc.fam.size <- nrow(family1)
+
+        
         for (j in 1:nrow(family1)) {
+            
             id <- family1[j,]$PassengerId
             family[family$PassengerId == id,] <- family1[j,]
+        
         }
         
+        
         family2 <- family[!(family$Ticket == ticket1) ,]         
-        family2$fam_name <- paste0(family2$fam_name[1], "(i)")
-        family2$nuc.fam.size <- nrow(family2)
-        for (j in 1:nrow(family2)) {
-            id <- family2[j,]$PassengerId
-            family[family$PassengerId == id,] <- family2[j,]
+        
+        if (all(family2$fam_size == family2$fam_size[1]) & all(family2$Ticket == family2$Ticket[1])) {
+            family2$fam_name <- paste0(family2$fam_name[1], "(i)")
+        } else if (!all(family2$Ticket == family2$Ticket[1])){
+            
+            for (sings in 1:nrow(family2)) {
+                
+                fams <- paste0(family2$fam_name[1], "(", paste0(replicate(n=sings, "I"),collapse=""), ")", collapse = "")
+                family2[sings,]$fam_name <- gsub("(I)", fams, family2[sings,]$fam_name, fixed=TRUE)
+                family[sings,] <- family2[sings,]
+            }    
+            
+            for (j in 1:nrow(family2)) {
+                id <- family2[j,]$PassengerId
+                family[family$PassengerId == id,] <- family2[j,]
+            }
         }
     }
-    
     for (z in 1:nrow(family)) {
         id <- family[z,]$PassengerId
         alldata[alldata$PassengerId == id,] <- family[z,]
